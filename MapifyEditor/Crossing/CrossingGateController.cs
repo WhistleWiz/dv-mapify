@@ -7,6 +7,8 @@ namespace Mapify.Editor
 {
     public class CrossingGateController : MonoBehaviour
     {
+        [Tooltip("The delay between activating the crossing and closing the gate")]
+        public float Delay = 2.0f;
         [Tooltip("The time to close the gate")]
         public float TimeToClose = 3.0f;
         [Tooltip("The angle between the open and closed positions")]
@@ -14,10 +16,11 @@ namespace Mapify.Editor
         [Tooltip("The rotating part of the gate")]
         public GameObject Gate;
 
+        private float _delayTime = 0.0f;
         private float _openPercent = 0.0f;
         private CrossingController _mainController;
 
-        public float TotalTimeToClose => TimeToClose;
+        public float TotalTimeToClose => TimeToClose + Delay;
 
         public CrossingController MainController => _mainController ?
             _mainController :
@@ -28,11 +31,23 @@ namespace Mapify.Editor
             // Close if locked, open otherwise.
             if (MainController.IsLocked)
             {
-                _openPercent -= Time.deltaTime / TimeToClose;
+                _delayTime += Time.deltaTime;
+                Debug.Log($"{_delayTime}/{Delay}");
+
+                if (_delayTime >= Delay)
+                {
+                    _openPercent -= Time.deltaTime / TimeToClose;
+                }
             }
             else
             {
                 _openPercent += Time.deltaTime / TimeToClose;
+
+                // Reset delay when a gate is fully opened.
+                if (_openPercent >= 1.0f)
+                {
+                    _delayTime = 0;
+                }
             }
 
             _openPercent = Mathf.Clamp01(_openPercent);

@@ -85,8 +85,8 @@ BoxCollider:
   m_IsTrigger: 1
   m_Enabled: 1
   serializedVersion: 2
-  m_Size: {x: 3, y: 3, z: 10}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 2.8, y: 2.8, z: 10}
+  m_Center: {x: 0, y: 1.5, z: 0}
 --- !u!1 &7313835739140351109
 GameObject:
   m_ObjectHideFlags: 0
@@ -97,7 +97,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1623511217392596205}
   - component: {fileID: 2585009152055420050}
-  - component: {fileID: 1278129979440210423}
+  - component: {fileID: 4179822078938117332}
   m_Layer: 0
   m_Name: Level Crossing
   m_TagString: Untagged
@@ -133,7 +133,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Directional: 0
---- !u!114 &1278129979440210423
+--- !u!114 &4179822078938117332
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -149,5 +149,3 @@ MonoBehaviour:
   UnlockTime: 1
   CentreDetector: {fileID: 301245715842912266}
   _visualizeMinimumRange: 1
-  _maxSpeedAtCrossing: 60
-  _timeToActivate: 5

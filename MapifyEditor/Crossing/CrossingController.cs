@@ -14,50 +14,31 @@ namespace Mapify.Editor
         public float UnlockTime = 1.0f;
         [Tooltip("The detector at point the track crosses the road/path")]
         public CrossingDetectorController CentreDetector;
+        [Tooltip("The maximum speed expected at this crossing")]
+        public float MaxSpeedAtCrossing = 60.0f;
+        [Tooltip("The time taken for all gates to close")]
+        public float TimeToActivate = 5.0f;
 
-        private float _activeTime = float.PositiveInfinity;
+        private float _activeTime = -1;
 
-        public bool IsLocked => _activeTime <= MaxLockedTime;
+        public bool IsLocked => _activeTime >= 0.0f;
 
-        private void Update()
+        private void FixedUpdate()
         {
-            _activeTime += Time.deltaTime;
+            _activeTime -= Time.fixedDeltaTime;
 
             // Failsafe in case the train never crosses.
-            if (_activeTime > MaxLockedTime)
+            if (_activeTime < 0)
             {
                 Unlock();
             }
         }
 
-        public void Lock()
-        {
-            _activeTime = 0;
-        }
-
-        public void Unlock()
-        {
-            // Set it to unlock after a slight delay.
-            _activeTime = Mathf.Max(_activeTime, MaxLockedTime - UnlockTime);
-        }
-
-
-#if UNITY_EDITOR
-        [Header("Editor Visualization")]
-        [SerializeField]
-        [Tooltip("This range is the minimum distance needed (in a straight line) for the gates to close " +
-            "before a train reaches the crossing")]
-        private bool _visualizeMinimumRange = true;
-        [SerializeField]
-        [Tooltip("The maximum speed expected at this crossing")]
-        private float _maxSpeedAtCrossing = 60.0f;
-        [SerializeField]
-        [Tooltip("The time taken for all gates to close")]
-        private float _timeToActivate = 5.0f;
-
-        // This is only needed in the editor so it's been moved here.
         private void OnValidate()
         {
+            // Max locked time needs to be at least the unlocked time.
+            MaxLockedTime = Mathf.Max(MaxLockedTime, UnlockTime);
+
             float time = 1;
             CrossingGateController[] gates = GetComponentsInChildren<CrossingGateController>();
 
@@ -67,8 +48,27 @@ namespace Mapify.Editor
                 time = Mathf.Max(gates[i].TotalTimeToClose, time);
             }
 
-            _timeToActivate = Mathf.Max(_timeToActivate, time);
+            TimeToActivate = Mathf.Max(TimeToActivate, time);
         }
+
+        public void Lock()
+        {
+            _activeTime = MaxLockedTime;
+        }
+
+        public void Unlock()
+        {
+            // Set it to unlock after a slight delay.
+            _activeTime = Mathf.Min(_activeTime, UnlockTime);
+        }
+
+
+#if UNITY_EDITOR
+        [Header("Editor Visualization")]
+        [SerializeField]
+        [Tooltip("This range is the minimum distance needed (in a straight line) for the gates to close " +
+            "before a train reaches the crossing")]
+        private bool _visualizeMinimumRange = true;
 
         private void OnDrawGizmos()
         {
@@ -76,7 +76,7 @@ namespace Mapify.Editor
             {
                 // Straight line range to be able to close the crossing on time.
                 Handles.DrawWireDisc(CentreDetector.transform.position, Vector3.up,
-                    _timeToActivate * _maxSpeedAtCrossing);
+                    TimeToActivate * MaxSpeedAtCrossing);
             }
         }
 #endif
