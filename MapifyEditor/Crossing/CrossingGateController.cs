@@ -32,7 +32,6 @@ namespace Mapify.Editor
             if (MainController.IsLocked)
             {
                 _delayTime += Time.deltaTime;
-                Debug.Log($"{_delayTime}/{Delay}");
 
                 if (_delayTime >= Delay)
                 {
