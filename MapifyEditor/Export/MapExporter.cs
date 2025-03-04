@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -60,16 +60,26 @@ namespace Mapify.Editor
             LastReleaseExportPath = exportFilePath;
 
             string tmpFolder = Path.Combine(Path.GetTempPath(), $"dv-mapify-{Path.GetRandomFileName()}");
-            if (Directory.Exists(tmpFolder))
+            if (Directory.Exists(tmpFolder)) {
                 Directory.Delete(tmpFolder, true);
+            }
             Directory.CreateDirectory(tmpFolder);
 
-            bool success = Export(tmpFolder, false);
+            string mapExportFolder = Path.Combine(tmpFolder, mapName);
+            Directory.CreateDirectory(mapExportFolder);
+
+            bool success = Export(mapExportFolder, false);
 
             if (success)
             {
                 EditorUtility.DisplayProgressBar("Mapify", "Creating zip file", 0);
-                ZipFile.CreateFromDirectory(tmpFolder, exportFilePath, CompressionLevel.Fastest, true);
+
+                if (File.Exists(exportFilePath))
+                {
+                    EditorFileUtil.MoveToTrash(exportFilePath);
+                }
+
+                ZipFile.CreateFromDirectory(mapExportFolder, exportFilePath, CompressionLevel.Fastest, true);
                 EditorUtility.ClearProgressBar();
                 if (EditorUtility.DisplayDialog("Mapify", "Export complete!", "Open Folder", "Ok"))
                     EditorUtility.RevealInFinder(exportFilePath);
@@ -138,7 +148,7 @@ namespace Mapify.Editor
 
             BuildUpdater.Update();
 
-            AssetBundleBuild[] builds = CreateBuilds(EditorSceneManager.GetSceneByPath(Scenes.TERRAIN));
+            AssetBundleBuild[] builds = CreateBuilds();
 
             bool success = BuildPipeline.BuildAssetBundles(
                 mapExportDir,
@@ -165,49 +175,140 @@ namespace Mapify.Editor
             return success;
         }
 
-        private static AssetBundleBuild[] CreateBuilds(Scene terrainScene)
+        private static AssetBundleBuild[] CreateBuilds()
         {
-            Terrain[] sortedTerrain = terrainScene.GetAllComponents<Terrain>()
-                .Where(terrain => terrain.gameObject.activeInHierarchy)
-                .ToArray()
-                .Sort();
-
-            List<AssetBundleBuild> builds = new List<AssetBundleBuild>(sortedTerrain.Length + 2);
-            for (int i = 0; i < sortedTerrain.Length; i++)
-                builds.Add(new AssetBundleBuild {
-                    assetBundleName = $"terraindata_{i}",
-                    assetNames = new[] { AssetDatabase.GetAssetPath(sortedTerrain[i].terrainData) }
-                });
+            var builds = CreateTerrainBuilds();
 
             string[] allAssetPaths = AssetDatabase.GetAllAssetPaths();
-            List<string> assetPaths = new List<string>(allAssetPaths.Length - sortedTerrain.Length);
+            List<string> assetPaths = new List<string>(allAssetPaths.Length - builds.Count);
             List<string> scenePaths = new List<string>();
-            for (int i = 0; i < allAssetPaths.Length; i++)
+
+            var mapInfoPath = AssetDatabase.GetAssetPath(EditorAssets.FindAsset<MapInfo>());
+
+            for (var i = 0; i < allAssetPaths.Length; i++)
             {
-                string assetPath = allAssetPaths[i];
+                var assetPath = allAssetPaths[i];
+
                 if (!assetPath.StartsWith("Assets/")) continue;
                 AssetImporter importer = AssetImporter.GetAtPath(assetPath);
-                if (importer == null || importer is MonoImporter || importer is PluginImporter) continue;
+                if (importer is null || importer is MonoImporter || importer is PluginImporter) continue;
+
                 Object obj = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
                 if (obj is TerrainData) continue;
-                (obj is SceneAsset ? scenePaths : assetPaths).Add(assetPath);
+
+                if (obj is SceneAsset)
+                {
+                    scenePaths.Add(assetPath);
+                }
+                else if (assetPath == mapInfoPath)
+                {
+                    CreateMapInfoBuild(assetPath, ref builds);
+                }
+                else
+                {
+                    assetPaths.Add(assetPath);
+                }
 
                 EditorUtility.DisplayProgressBar("Gathering assets", assetPath, i / (float)allAssetPaths.Length);
             }
 
             EditorUtility.ClearProgressBar();
 
-            builds.Add(new AssetBundleBuild {
-                assetBundleName = Names.ASSETS_ASSET_BUNDLE,
-                assetNames = assetPaths.ToArray()
+            CreateSceneBuilds(scenePaths, ref builds);
+            CreateAssetsBuilds(assetPaths, ref builds);
+
+            return builds.ToArray();
+        }
+
+        private static List<AssetBundleBuild> CreateTerrainBuilds()
+        {
+            var terrainScene = EditorSceneManager.GetSceneByPath(Scenes.TERRAIN);
+
+            Terrain[] sortedTerrain = terrainScene.GetAllComponents<Terrain>()
+                .Where(terrain => terrain.gameObject.activeInHierarchy)
+                .ToArray()
+                .Sort();
+
+            var builds = new List<AssetBundleBuild>(sortedTerrain.Length);
+
+            for (int i = 0; i < sortedTerrain.Length; i++)
+            {
+                builds.Add(new AssetBundleBuild
+                {
+                    assetBundleName = $"terraindata_{i}",
+                    assetNames = new[] { AssetDatabase.GetAssetPath(sortedTerrain[i].terrainData) }
+                });
+            }
+
+            return builds;
+        }
+
+        private static void CreateMapInfoBuild(string mapInfoPath, ref List<AssetBundleBuild> builds)
+        {
+            builds.Add(new AssetBundleBuild
+            {
+                assetBundleName = Names.MAP_INFO_ASSET_BUNDLE,
+                assetNames = new[] { mapInfoPath }
             });
+        }
+
+        private static void CreateSceneBuilds(List<string> scenePaths, ref List<AssetBundleBuild> builds)
+        {
             builds.Add(new AssetBundleBuild {
                 assetBundleName = Names.SCENES_ASSET_BUNDLE,
                 assetNames = scenePaths.ToArray()
             });
-
-            return builds.ToArray();
         }
+
+        private static void CreateAssetsBuilds(List<string> assetPaths, ref List<AssetBundleBuild> builds)
+        {
+            //put big assets in their own assetbundle to avoid the combined assetbundle getting too big.
+            //Unity cannot load assetbundles larger then 4GB.
+            long assetBundleSize = 0;
+            long assetBundleNumber = 1;
+            var asssetBundleFiles = new List<string>();
+
+            for (var i = 0; i < assetPaths.Count; i++)
+            {
+                string absolutePath = Path.GetFullPath(assetPaths[i]);
+
+                //skip directories
+                if ((File.GetAttributes(absolutePath) & FileAttributes.Directory) == FileAttributes.Directory)
+                {
+                    continue;
+                }
+
+                long fileSize = new FileInfo(absolutePath).Length;
+
+                // if the asset would get too big, create a new assetbundle
+                const long maxBundleSize = 500 * 1000000; //500MB
+                if (assetBundleSize > 0 && assetBundleSize + fileSize > maxBundleSize)
+                {
+                    builds.Add(new AssetBundleBuild {
+                        assetBundleName = Names.ASSETS_ASSET_BUNDLES_PREFIX+'_'+assetBundleNumber,
+                        assetNames = asssetBundleFiles.ToArray()
+                    });
+
+                    assetBundleSize = 0;
+                    assetBundleNumber++;
+                    asssetBundleFiles = new List<string>();
+                }
+
+                asssetBundleFiles.Add(assetPaths[i]);
+                assetBundleSize += fileSize;
+
+                //if this is the last asset, create a new assetbundle
+                if(assetBundleSize > 0 && i >= assetPaths.Count-1)
+                {
+                    builds.Add(new AssetBundleBuild {
+                        assetBundleName = Names.ASSETS_ASSET_BUNDLES_PREFIX+'_'+assetBundleNumber,
+                        assetNames = asssetBundleFiles.ToArray()
+                    });
+                }
+            }
+        }
+
+
 
         private static void CreateMapInfo(string filePath, MapInfo mapInfo)
         {
@@ -220,7 +321,7 @@ namespace Mapify.Editor
                 Id = mapInfo.name,
                 Version = mapInfo.version,
                 DisplayName = mapInfo.name,
-                ManagerVersion = "0.27.3",
+                ManagerVersion = "0.27.13",
                 Requirements = new[] { "Mapify" },
                 HomePage = mapInfo.homePage
             };

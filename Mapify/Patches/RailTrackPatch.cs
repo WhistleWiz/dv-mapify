@@ -3,10 +3,11 @@ using System.Linq;
 using System.Reflection.Emit;
 using HarmonyLib;
 using Mapify.Editor;
+using Mapify.Map;
 
 namespace Mapify.Patches
 {
-    [HarmonyPatch(typeof(RailTrack), "ConnectToClosestBranch")]
+    [HarmonyPatch(typeof(RailTrack), nameof(RailTrack.ConnectToClosestBranch))]
     public static class RailTrack_ConnectToClosestBranch_Patch
     {
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -15,7 +16,7 @@ namespace Mapify.Patches
         }
     }
 
-    [HarmonyPatch(typeof(RailTrack), "ConnectInToClosestJunction")]
+    [HarmonyPatch(typeof(RailTrack), nameof(RailTrack.ConnectInToClosestJunction))]
     public static class RailTrack_ConnectInToClosestJunction_Patch
     {
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -24,7 +25,7 @@ namespace Mapify.Patches
         }
     }
 
-    [HarmonyPatch(typeof(RailTrack), "ConnectOutToClosestJunction")]
+    [HarmonyPatch(typeof(RailTrack), nameof(RailTrack.ConnectOutToClosestJunction))]
     public static class RailTrack_ConnectOutToClosestJunction_Patch
     {
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -57,6 +58,18 @@ namespace Mapify.Patches
         private static bool Prefix(Junction.Branch branch)
         {
             return branch != null;
+        }
+    }
+
+    /// <summary>
+    /// This function throws a NullReferenceException on custom maps. It doesn't look critical so let's just skip it for now.
+    /// </summary>
+    [HarmonyPatch(typeof(RailTrack), nameof(RailTrack.WarnIfConnectionsAreDisjoint))]
+    public static class RailTrack_WarnIfConnectionsAreDisjoint_Patch
+    {
+        private static bool Prefix()
+        {
+            return Maps.IsDefaultMap;
         }
     }
 }

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using DV;
 using Mapify.Editor;
+using Mapify.SceneInitializers.GameContent;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -112,6 +113,7 @@ namespace Mapify.Map
 
         public static void RegisterLoadedMap(MapInfo mapInfo)
         {
+            WorldMapSetup.ShowStationNamesOnMap = mapInfo.showStationNamesOnMap;
             IsDefaultMap = mapInfo.name == DEFAULT_MAP_INFO.name;
             LoadedMap = mapInfo;
         }
@@ -125,6 +127,12 @@ namespace Mapify.Map
         public static string GetMapAsset(string fileName, string mapDir = null)
         {
             return Path.Combine(mapDir ?? availableMaps[LoadedMap.name].Item3, fileName);
+        }
+
+        public static string[] GetMapAssets(string searchPattern, string mapDir = null)
+        {
+            string path = mapDir ?? availableMaps[LoadedMap.name].Item3;
+            return Directory.GetFiles(path, searchPattern);
         }
     }
 }
