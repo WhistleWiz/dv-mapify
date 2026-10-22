@@ -438,6 +438,7 @@ namespace Mapify.Editor.Tools
                 throw new System.ArgumentOutOfRangeException(nameof(mainSideTracks), "Main side tracks must be at least 1.");
             }
 
+            bool inStation = !string.IsNullOrEmpty(stationId);
             Vector3 dir = (attachPoint - handlePosition).normalized;
             Switch start;
             Switch end;
@@ -462,7 +463,7 @@ namespace Mapify.Editor.Tools
 
             // Create the switches for the first side.
             side1 = CreateSwitchSprawl(leftPrefab, rightPrefab, startObj.transform, attachPoint, handlePosition,
-                orientation, mainSideTracks, trackDistance, out s, out merge1);
+                orientation, mainSideTracks, trackDistance, inStation, out s, out merge1);
             mid = s.GetThroughPoint();
             start = s;
 
@@ -474,8 +475,14 @@ namespace Mapify.Editor.Tools
                     TrackToolsHelper.CalculateYardMidSwitchDistance(trackDistance), 0);
                 side2 = CreateSwitchSprawl(leftPrefab, rightPrefab, startObj.transform,
                     t.Curve[1].position, t.Curve[1].globalHandle1, FlipOrientation(orientation), otherSideTracks,
-                    trackDistance, out s, out merge2);
+                    trackDistance, inStation, out s, out merge2);
                 mid = s.GetThroughPoint();
+
+                if (inStation)
+                {
+                    t.trackType = TrackType.MiscYard;
+                    t.UpdateColor();
+                }
             }
 
             // Store the start of the middle track before we do the other side.
@@ -491,7 +498,7 @@ namespace Mapify.Editor.Tools
             if (alternateSides && otherSideTracks > 0)
             {
                 side4 = CreateSwitchSprawl(leftPrefab, rightPrefab, endObj.transform, attachPoint, attachPoint + dir,
-                    orientation, otherSideTracks, trackDistance, out s, out merge4);
+                    orientation, otherSideTracks, trackDistance, inStation, out s, out merge4);
                 mid = s.GetThroughPoint();
                 // Final switch, return it later.
                 end = s;
@@ -501,13 +508,19 @@ namespace Mapify.Editor.Tools
                     TrackToolsHelper.CalculateYardMidSwitchDistance(trackDistance), 0);
                 side3 = CreateSwitchSprawl(leftPrefab, rightPrefab, endObj.transform,
                     t.Curve[1].position, t.Curve[1].globalHandle1, FlipOrientation(orientation), mainSideTracks,
-                    trackDistance, out s, out merge3);
+                    trackDistance, inStation, out s, out merge3);
                 mid = s.GetThroughPoint();
+
+                if (inStation)
+                {
+                    t.trackType = TrackType.MiscYard;
+                    t.UpdateColor();
+                }
             }
             else
             {
                 side3 = CreateSwitchSprawl(leftPrefab, rightPrefab, endObj.transform, attachPoint, attachPoint + dir,
-                    FlipOrientation(orientation), mainSideTracks, trackDistance, out s, out merge3);
+                    FlipOrientation(orientation), mainSideTracks, trackDistance, inStation, out s, out merge3);
                 mid = s.GetThroughPoint();
                 // Final switch, return it later.
                 end = s;
@@ -519,8 +532,14 @@ namespace Mapify.Editor.Tools
                     t = CreateStraight(endObj.transform, mid.position, mid.globalHandle1,
                         TrackToolsHelper.CalculateYardMidSwitchDistance(trackDistance), 0);
                     side4 = CreateSwitchSprawl(leftPrefab, rightPrefab, endObj.transform,
-                        t.Curve[1].position, t.Curve[1].globalHandle1, orientation, otherSideTracks, trackDistance, out s, out merge4);
+                        t.Curve[1].position, t.Curve[1].globalHandle1, orientation, otherSideTracks, trackDistance, inStation, out s, out merge4);
                     mid = s.GetThroughPoint();
+
+                    if (inStation)
+                    {
+                        t.trackType = TrackType.MiscYard;
+                        t.UpdateColor();
+                    }
                 }
             }
 
@@ -644,6 +663,7 @@ namespace Mapify.Editor.Tools
             Object.DestroyImmediate(endObj);
 
             AssignStationIdToSwitches(yardObj, stationId);
+            EnsureScale(yardObj);
 
             sidings = storageTracks.ToArray();
             return new Switch[] { start, end };
@@ -658,6 +678,7 @@ namespace Mapify.Editor.Tools
                 throw new System.ArgumentOutOfRangeException(nameof(mainSideTracks), "Main side tracks must be at least 1.");
             }
 
+            bool inStation = !string.IsNullOrEmpty(stationId);
             Vector3 dir = (attachPoint - handlePosition).normalized;
             Vector3 rotDir = MathHelper.RotateCW(dir.Flatten()).To3D(0);
 
@@ -687,7 +708,7 @@ namespace Mapify.Editor.Tools
 
             // Create the switches for the first side.
             side1 = CreateSwitchSprawl(leftPrefab, rightPrefab, startObj.transform, attachPoint, handlePosition,
-                orientation, mainSideTracks, trackDistance, out s, out merge1);
+                orientation, mainSideTracks, trackDistance, inStation, out s, out merge1);
             mid = s.GetThroughPoint();
             start = s;
 
@@ -699,8 +720,14 @@ namespace Mapify.Editor.Tools
                     TrackToolsHelper.CalculateYardMidSwitchDistance(trackDistance), 0);
                 side2 = CreateSwitchSprawl(leftPrefab, rightPrefab, startObj.transform,
                     t.Curve[1].position, t.Curve[1].globalHandle1, FlipOrientation(orientation), otherSideTracks,
-                    trackDistance, out s, out merge2);
+                    trackDistance, inStation, out s, out merge2);
                 mid = s.GetThroughPoint();
+
+                if (inStation)
+                {
+                    t.trackType = TrackType.MiscYard;
+                    t.UpdateColor();
+                }
             }
 
             // Create an empty GameObject to be the parent of the whole yard.
@@ -854,6 +881,7 @@ namespace Mapify.Editor.Tools
             Object.DestroyImmediate(startObj);
 
             AssignStationIdToSwitches(yardObj, stationId);
+            EnsureScale(yardObj);
 
             sidings = storageTracks.ToArray();
             return new Switch[] { start };
@@ -861,8 +889,8 @@ namespace Mapify.Editor.Tools
 
         // Switches on each side of the yard.
         private static List<BezierPoint> CreateSwitchSprawl(Switch leftPrefab, Switch rightPrefab, Transform parent,
-            Vector3 attachPoint, Vector3 handlePosition, TrackOrientation orientation, int sideTracks, float trackDistance, out Switch start,
-            out Track[] endMerge)
+            Vector3 attachPoint, Vector3 handlePosition, TrackOrientation orientation, int sideTracks, float trackDistance, bool inStation,
+            out Switch start, out Track[] endMerge)
         {
             // Starting switch.
             // Switch stands are all on the outside of the yard.
@@ -895,6 +923,12 @@ namespace Mapify.Editor.Tools
                 s.standSide = Switch.StandSide.THROUGH;
                 s.defaultState = Switch.StandSide.THROUGH;
                 length = sideL;
+
+                if (inStation)
+                {
+                    t.trackType = TrackType.MiscYard;
+                    t.UpdateColor();
+                }
             }
 
             // Final track gets no switch.
@@ -919,7 +953,7 @@ namespace Mapify.Editor.Tools
             t.stationId = stationId;
             t.trackType = TrackType.Storage;
             // Colour isn't updated until OnValidate() is called so force it to be updated.
-            t.Curve.drawColor = Track.COLOR_STORAGE;
+            t.UpdateColor();
         }
 
         private static void AssignStationIdToSwitches(GameObject go, string stationId)
@@ -927,6 +961,15 @@ namespace Mapify.Editor.Tools
             foreach (var item in go.GetComponentsInChildren<SwitchBase>(true))
             {
                 item.stationId = stationId;
+            }
+        }
+
+        // I'm not sure what broke to make this necessary.
+        private static void EnsureScale(GameObject go)
+        {
+            foreach (var transform in go.GetComponentsInChildren<Transform>())
+            {
+                transform.localScale = Vector3.one;
             }
         }
 

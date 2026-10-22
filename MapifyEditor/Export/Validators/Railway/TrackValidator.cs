@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using System.Linq;
 using Mapify.Editor;
@@ -34,9 +34,12 @@ namespace MapifyEditor.Export.Validators
                 if (track.trackType == TrackType.Road)
                 {
                     if (!string.IsNullOrWhiteSpace(track.stationId))
-                    {
                         yield return Result.Warning($"Track {track.name} will not be assigned to specified station {track.stationId} because {nameof(track.trackType)} is set to {track.trackType}", track);
-                    }
+                }
+                else if (track.trackType == TrackType.MiscYard)
+                {
+                    if (string.IsNullOrWhiteSpace(track.stationId))
+                        yield return Result.Error("Station ID not specified", track);
                 }
                 else
                 {

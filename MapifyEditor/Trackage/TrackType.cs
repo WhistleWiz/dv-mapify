@@ -11,7 +11,8 @@ namespace Mapify.Editor
         Out,
         Parking,
         PassengerStorage,
-        PassengerLoading
+        PassengerLoading,
+        MiscYard
     }
 
     public static class TrackTypeExtensions
@@ -35,6 +36,7 @@ namespace Mapify.Editor
                 case TrackType.PassengerLoading:
                     return "LP";
                 case TrackType.Road:
+                case TrackType.MiscYard:
                     throw new ArgumentOutOfRangeException(nameof(trackType), trackType, $"{trackType} doesn't have a letter ID");
                 default:
                     throw new ArgumentOutOfRangeException(nameof(trackType), trackType, null);

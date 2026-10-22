@@ -24,6 +24,7 @@ namespace Mapify.Editor
         public static readonly Color32 COLOR_PARKING = new Color32(200, 235, 0, 255);
         public static readonly Color32 COLOR_PASSENGER_STORAGE = new Color32(0, 100, 100, 255);
         public static readonly Color32 COLOR_PASSENGER_LOADING = new Color32(0, 255, 255, 255);
+        public static readonly Color32 COLOR_MISC_YARD = new Color32(125, 125, 125, 255);
         // ReSharper restore MemberCanBePrivate.Global
 
         [Header("Visuals")]
@@ -87,30 +88,31 @@ namespace Mapify.Editor
         public bool IsCustomSwitch => GetComponentInParent<CustomSwitch>() != null;
         public bool IsTurntable => GetComponentInParent<Turntable>() != null;
 
-        public string LogicName =>
-            trackType == TrackType.Road
-                ? $"{(generateSigns ? "" : "[#] ")}{name}"
-                : $"[Y]_[{stationId}]_[{yardId}-{trackId:D2}-{trackType.LetterId()}]";
-
-#if UNITY_EDITOR
-
-        private void Start()
+        public string LogicName
         {
-            // necessary for SetupSnapColliders after updating Mapify
-            snapShouldUpdate = true;
+            get
+            {
+                if (trackType == TrackType.Road)
+                {
+                    if (generateSigns)
+                    {
+                        return name;
+                    }
+
+                    return $"[#] {name}";
+                }
+                else if (trackType == TrackType.MiscYard)
+                {
+                    return $"[Y]_[{stationId}]_[--]";
+                }
+
+                return $"[Y]_[{stationId}]_[{yardId}-{trackId:D2}-{trackType.LetterId()}]";
+            }
         }
 
-        private void OnValidate()
+        // This has to be outside the #if below...
+        internal void UpdateColor()
         {
-            SyncSnapRangeToSnapColliders();
-            SyncDrawColorToGizmos();
-        }
-
-        private void SyncDrawColorToGizmos()
-        {
-            if (!isActiveAndEnabled || IsSwitch || IsTurntable)
-                return;
-
             switch (trackType)
             {
                 case TrackType.Road:
@@ -137,7 +139,32 @@ namespace Mapify.Editor
                 case TrackType.PassengerLoading:
                     Curve.drawColor = COLOR_PASSENGER_LOADING;
                     break;
+                case TrackType.MiscYard:
+                    Curve.drawColor = COLOR_MISC_YARD;
+                    break;
             }
+        }
+
+#if UNITY_EDITOR
+
+        private void Start()
+        {
+            // necessary for SetupSnapColliders after updating Mapify
+            snapShouldUpdate = true;
+        }
+
+        private void OnValidate()
+        {
+            SyncSnapRangeToSnapColliders();
+            SyncDrawColorToGizmos();
+        }
+
+        private void SyncDrawColorToGizmos()
+        {
+            if (!isActiveAndEnabled || IsSwitch || IsTurntable)
+                return;
+
+            UpdateColor();
         }
 
         private void SyncSnapRangeToSnapColliders()
