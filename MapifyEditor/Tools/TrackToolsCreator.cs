@@ -643,6 +643,8 @@ namespace Mapify.Editor.Tools
             Object.DestroyImmediate(startObj);
             Object.DestroyImmediate(endObj);
 
+            AssignStationIdToSwitches(yardObj, stationId);
+
             sidings = storageTracks.ToArray();
             return new Switch[] { start, end };
         }
@@ -851,6 +853,8 @@ namespace Mapify.Editor.Tools
 
             Object.DestroyImmediate(startObj);
 
+            AssignStationIdToSwitches(yardObj, stationId);
+
             sidings = storageTracks.ToArray();
             return new Switch[] { start };
         }
@@ -916,6 +920,14 @@ namespace Mapify.Editor.Tools
             t.trackType = TrackType.Storage;
             // Colour isn't updated until OnValidate() is called so force it to be updated.
             t.Curve.drawColor = Track.COLOR_STORAGE;
+        }
+
+        private static void AssignStationIdToSwitches(GameObject go, string stationId)
+        {
+            foreach (var item in go.GetComponentsInChildren<SwitchBase>(true))
+            {
+                item.stationId = stationId;
+            }
         }
 
         // Turntables.

@@ -17,7 +17,6 @@ namespace Mapify.Editor
 
         [Tooltip("Which side of the switch the stand will appear on")]
         public StandSide standSide;
-
         [Tooltip("Which way the switch should be flipped by default")]
         public StandSide defaultState;
 

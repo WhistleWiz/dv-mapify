@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Linq;
 using Mapify.Editor;
 using Mapify.Editor.Utils;
 using Mapify.Utils;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -13,6 +13,7 @@ namespace Mapify.SceneInitializers.Railway
     {
         private const string IN_JUNCTION_NAME = "in_junction";
         private static readonly string[] stalkObjectsToDelete = {"ballast", "anchors", "sleepers", "rails_static", "rails_moving"};
+        private static int s_junctionIndex = 0;
 
         public override void Run()
         {
@@ -114,6 +115,7 @@ namespace Mapify.SceneInitializers.Railway
 
         private static void CreateJunctions()
         {
+            s_junctionIndex = 0;
             CreateCustomSwitches();
             CreateVanillaSwitches();
         }
@@ -140,6 +142,7 @@ namespace Mapify.SceneInitializers.Railway
             inJunction.transform.position = customSwitch.GetJointPoint().transform.position;
             inJunction.selectedBranch = customSwitch.defaultBranch;
 
+            SetSwitchProperties(customSwitch, inJunction);
             SetupStalk(prefabClone, customSwitch.GetJointPoint());
             DestroyPrefabTracks(prefabClone);
             CreateSwitchTracks(customSwitch, prefabClone, inJunction, railTracksCache);
@@ -286,8 +289,36 @@ namespace Mapify.SceneInitializers.Railway
                 foreach (Junction.Branch branch in junction.outBranches)
                     branch.track.generateColliders = true;
 
+                SetSwitchProperties(switch_, junction);
+
                 prefabClone.transform.SetParent(RailTrackRegistry.Instance.TrackRootParent);
                 prefabClone.SetActive(true);
+            }
+        }
+
+        private static void SetSwitchProperties(SwitchBase sw, Junction junction)
+        {
+            var index = s_junctionIndex++;
+            var data = junction.junctionData;
+            data.junctionIndex = index;
+            data.junctionId = index;
+            data.junctionIdLong = GetId();
+            data.position = sw.transform.position;
+            junction.junctionData = data;
+
+            // TODO:
+            // Add linked junction calculation.
+
+            string GetId()
+            {
+                if (string.IsNullOrEmpty(sw.stationId))
+                {
+                    return $"{Junction.JunctionData.ID_MARKER_WORLD}-{index:D4}";
+                }
+                else
+                {
+                    return $"{Junction.JunctionData.ID_MARKER_STATION}-{index:D4}-{sw.stationId}";
+                }
             }
         }
 
