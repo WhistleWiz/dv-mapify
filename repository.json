@@ -2,6 +2,66 @@
   "Releases": [
     {
       "Id": "Mapify",
+      "Version": "2026.09.08",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2026.09.08/Mapify_Continued_v2026.09.08.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2025.12.14",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2025.12.14/Mapify_Continued_v2025.12.14.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2025.08.27",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2025.08.27/Mapify.unofficial.preview.v2025.08.27.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2025.08.20",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2025.08.20/Mapify.unofficial.preview.v2025.08.20.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2025.08.13",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2025.08.13/Mapify.unofficial.preview.v2025.08.13.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2025.05.21",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2025.05.21/Mapify.unofficial.preview.v2025.05.21.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2025.05.14",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2025.05.14/Mapify.unofficial.preview.v2025.05.14.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2025.01.25",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2025.01.25/Mapify.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2024.12.07",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2024.12.07/Mapify.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2024.11.26",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2024.11.26/Mapify.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2024.02.12",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2024.02.12/Mapify.zip"
+    },
+    {
+      "Id": "Mapify",
+      "Version": "2024.02.05",
+      "DownloadUrl": "https://github.com/t0stiman/dv-mapify/releases/download/v2024.02.05/Mapify.zip"
+    },
+    {
+      "Id": "Mapify",
       "Version": "0.4.1",
       "DownloadUrl": "https://github.com/Insprill/dv-mapify/releases/download/v0.4.1/Mapify_v0.4.1.zip"
     },

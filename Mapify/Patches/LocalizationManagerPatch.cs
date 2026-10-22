@@ -3,6 +3,9 @@ using I2.Loc;
 
 namespace Mapify.Patches
 {
+    /// <summary>
+    /// Mapify translations
+    /// </summary>
     [HarmonyPatch(typeof(LocalizationManager), nameof(LocalizationManager.GetTranslation))]
     public static class LocalizationManager_GetTranslation_Patch
     {

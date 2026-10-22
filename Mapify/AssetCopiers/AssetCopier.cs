@@ -18,9 +18,11 @@ namespace Mapify
 
         public static GameObject Instantiate(VanillaAsset asset, bool active = true, bool originShift = true)
         {
-            GameObject go = GameObject.Instantiate(prefabs[asset], originShift ? WorldMover.OriginShiftParent : null);
-            go.SetActive(active);
-            return go;
+            Mapify.LogDebug("Instantiating asset: " + asset);
+
+            var gameObject = GameObject.Instantiate(prefabs[asset], originShift ? WorldMover.OriginShiftParent : null);
+            gameObject.SetActive(active);
+            return gameObject;
         }
 
         public static void Cleanup()
@@ -37,7 +39,7 @@ namespace Mapify
             if (!scene.isLoaded)
                 throw new InvalidOperationException($"Tried to copy vanilla assets from {scene.name} but it isn't loaded!");
 
-            Mapify.LogDebugExtreme(() => $"Copying default assets from vanilla scene {scene.name}");
+            Mapify.LogDebugExtreme($"Copying default assets from vanilla scene {scene.name}");
 
             GameObject[] rootObjects = scene.GetRootGameObjects();
             foreach (GameObject rootObject in rootObjects)
@@ -68,7 +70,7 @@ namespace Mapify
                     Object.Destroy(rootObject);
             }
 
-            Mapify.LogDebugExtreme(() => $"Unloading vanilla scene {scene.name}");
+            Mapify.LogDebugExtreme($"Unloading vanilla scene {scene.name}");
             SceneManager.UnloadSceneAsync(scene);
         }
     }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Mapify.Editor
@@ -12,6 +13,16 @@ namespace Mapify.Editor
         public string version = "0.1.0";
         [Tooltip("The home page of your mod, most likely being the Nexus Mods page")]
         public string homePage = "https://www.nexusmods.com/derailvalley/mods/MOD-ID-HERE";
+        [Tooltip("Link to your repository.json file (for updates)")]
+        public string repository = "";
+
+        [Tooltip("Mod dependencies of this map (enter the mod ID, not the name)")]
+        public List<string> requiredMods = new List<string>();
+
+        [Header("Loading Screen")]
+        public Texture2D[] LoadingScreenImages;
+        public AudioClip LoadingScreenMusic;
+        public Texture2D LoadingScreenLogo;
 
         [Header("Loading Gauge")]
         [Tooltip("The height of the loading gauge, in meters")]

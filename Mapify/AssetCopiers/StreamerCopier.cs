@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Mapify.Editor;
 using Mapify.Editor.Utils;
 using UnityEngine;
@@ -26,15 +27,23 @@ namespace Mapify.SceneInitializers.Vanilla.Streaming
                         yield return (VanillaAsset.TurntablePit, parent.gameObject);
                         break;
                     }
-                    case "TurntableControlHouse": {
-                        Transform parent = Object.Instantiate(filter.transform.parent.gameObject).transform;
-                        parent.gameObject.SetActive(false);
-                        Object.Destroy(parent.FindChildByName("TurntablePit").gameObject);
-                        Object.Destroy(parent.FindChildByName("TurntablePit_LOD1").gameObject);
-                        Object.Destroy(parent.FindChildByName("TurntablePit_ShadowCaster").gameObject);
-                        foreach (Transform t in parent)
+                    case "TurntableControlHouse":
+                    {
+                        var shedVisual = filter.transform.parent.gameObject;
+                        var shedCopy = Object.Instantiate(shedVisual);
+                        shedCopy.SetActive(false);
+                        Object.Destroy(shedCopy.FindChildByName("TurntablePit"));
+                        Object.Destroy(shedCopy.FindChildByName("TurntablePit_LOD1"));
+                        Object.Destroy(shedCopy.FindChildByName("TurntablePit_ShadowCaster"));
+
+                        var shedCollider = shedVisual.transform.parent.GetComponentsInChildren<MeshCollider>()
+                            .First(collider => collider.sharedMesh == mesh);
+                        Object.Instantiate(shedCollider.gameObject, shedCopy.transform, false);
+
+                        foreach (Transform t in shedCopy.transform)
                             t.localPosition = Vector3.zero;
-                        yield return (VanillaAsset.TurntableControlShed, parent.gameObject);
+
+                        yield return (VanillaAsset.TurntableControlShed, shedCopy);
                         break;
                     }
                     case "ItemShop":

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <LangVersion>8.0</LangVersion>
+        <OutDir>bin/$(Configuration)</OutDir>
+        <IsEditor>true</IsEditor>
+        <TargetName>BezierCurves</TargetName>
+        <PackageBuilderDir>../PackageBuilder/Assets/Mapify/Scripts/</PackageBuilderDir>
+        <TestMapDir>../TestMap/Assets/Mapify/Scripts</TestMapDir>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(IsEditor)' == 'true'">
+        <Reference Include="UnityEditor" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="UnityEngine.CoreModule"/>
+    </ItemGroup>
+
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+        <Copy Condition="'$(IsEditor)' == 'true'" SourceFiles="$(TargetPath)" DestinationFolder="$(PackageBuilderDir);" />
+        <Copy Condition="'$(IsEditor)' == 'true' And Exists('$(TestMapDir)')" SourceFiles="$(TargetPath)" DestinationFolder="$(TestMapDir)" />
+    </Target>
+</Project>

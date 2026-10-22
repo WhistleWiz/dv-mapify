@@ -42,11 +42,11 @@
         <Copy Condition="'$(IsEditor)' != 'true'" SourceFiles="$(TargetPath)" DestinationFolder="../build/runtime" />
 
         <!-- Copy to package build and test map -->
-        <Copy Condition="'$(IsEditor)' == 'true'" SourceFiles="$(TargetPath);$(OutDir)BezierCurves.dll" DestinationFolder="$(PackageBuilderDir);" />
+        <Copy Condition="'$(IsEditor)' == 'true'" SourceFiles="$(TargetPath)" DestinationFolder="$(PackageBuilderDir);" />
         <Copy Condition="'$(IsEditor)' == 'true' And Exists('$(TestMapDir)')" SourceFiles="$(TargetPath)" DestinationFolder="$(TestMapDir)" />
 
         <!-- Copy to game install folder -->
-        <Exec Condition="Exists('$(DvInstallDir)') And '$(IsEditor)' != 'true'" Command="pwsh  -Command &quot;(../package.ps1 -NoArchive -OutputDirectory '$(DvInstallDir)/Mods')&quot;" />
+        <Copy Condition="Exists('$(DvInstallDir)') And '$(IsEditor)' != 'true'" SourceFiles="../info.json;$(TargetPath);../LICENSE;../locale.csv" DestinationFolder="$(DvInstallDir)/Mods/Mapify" />
 
         <!-- Update package version number -->
         <Exec Condition="'$(IsEditor)' == 'true'" Command="pwsh -Command &quot;((Get-Content -Raw -Path '../info.json' | ConvertFrom-Json).Version | Set-Content -NoNewline -Encoding utf8NoBOM -Path '../PackageBuilder/Assets/Mapify/version.txt')&quot;" />

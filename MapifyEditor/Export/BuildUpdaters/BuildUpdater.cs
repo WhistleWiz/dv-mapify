@@ -95,6 +95,8 @@ namespace Mapify.Editor.StateUpdaters
             BuildUpdater[] arr = Assembly.GetAssembly(typeof(BuildUpdater))
                 .GetTypes()
                 .Where(t => t.IsSubclassOf(typeof(BuildUpdater)) && t != typeof(BuildUpdater))
+                // TerrainSceneUpdater needs to be run before StreamingUpdater because it needs mapInfo.worldSize
+                .OrderBy(t => t != typeof(TerrainSceneUpdater))
                 .Select(t =>
                 {
                     ConstructorInfo constructor = t.GetConstructor(Type.EmptyTypes);
@@ -105,6 +107,7 @@ namespace Mapify.Editor.StateUpdaters
                 })
                 .Where(v => v != null)
                 .ToArray();
+
             EditorUtility.ClearProgressBar();
             return arr;
         }

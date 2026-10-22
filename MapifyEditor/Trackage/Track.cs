@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using Mapify.Editor.Utils;
 using UnityEditor;
@@ -6,13 +5,15 @@ using UnityEngine;
 
 namespace Mapify.Editor
 {
-    [ExecuteInEditMode] //this is necessary for snapping to work
+    [ExecuteInEditMode] // this is necessary for snapping to work
     [RequireComponent(typeof(BezierCurve))]
     public class Track : MonoBehaviour
     {
         public const float SNAP_RANGE = 1.0f;
-        public const float SNAP_UPDATE_RANGE_SQR = 250000;
-        public const float SNAP_RANGE_SQR = SNAP_RANGE * SNAP_RANGE;
+        public const float SNAP_RANGE_SQUARED = SNAP_RANGE * SNAP_RANGE; // yeah i know, 1x1 = 1. It's futureproofing, okay?
+        public const float SNAP_UPDATE_RANGE = 500;
+        public const float SNAP_UPDATE_RANGE_SQR = SNAP_UPDATE_RANGE*SNAP_UPDATE_RANGE;
+        public const float TURNTABLE_SEARCH_RANGE = 0.05f;
 
         // ReSharper disable MemberCanBePrivate.Global
         public static readonly Color32 COLOR_ROAD = new Color32(255, 255, 255, 255);
@@ -45,26 +46,34 @@ namespace Mapify.Editor
         [Tooltip("The purpose of this track")]
         public TrackType trackType;
 
+        private BezierCurve _curve;
+
 #if UNITY_EDITOR
         [Header("Editor Visualization")]
         [SerializeField]
         private bool showLoadingGauge;
-#endif
 
         public bool isInSnapped { get; private set; }
         public bool isOutSnapped { get; private set; }
-        private BezierCurve _curve;
 
-#if UNITY_EDITOR
+        [SerializeField] [HideInInspector]
+        private SphereCollider frontSnapCollider;
+        [SerializeField] [HideInInspector]
+        private SphereCollider rearSnapCollider;
+
         private bool snapShouldUpdate = true;
         private Vector3 previousPositionFirstPoint;
         private Vector3 previousPositionLastPoint;
 
-        //the track connected to the first point in our curve
+        // the track connected to the first point in our curve
         private SnappedTrack snappedTrackBefore;
-        //the track connected to the last point in our curve
+        // the track connected to the last point in our curve
         private SnappedTrack snappedTrackAfter;
 #endif
+
+        // The name the track had in the editor. This is useful for debugging since the name gets changed to LogicTrack at runtime.
+        [HideInInspector]
+        public string InEditorName;
 
         public BezierCurve Curve {
             get {
@@ -73,49 +82,35 @@ namespace Mapify.Editor
             }
         }
 
-        private Switch _parentSwitch;
-
-        private Switch ParentSwitch {
-            get {
-                if (_parentSwitch) return _parentSwitch;
-                return _parentSwitch = GetComponentInParent<Switch>();
-            }
-        }
-
-        public bool IsSwitch => ParentSwitch != null;
+        public bool IsSwitch => GetComponentInParent<SwitchBase>() != null;
+        public bool IsVanillaSwitch => GetComponentInParent<Switch>() != null;
+        public bool IsCustomSwitch => GetComponentInParent<CustomSwitch>() != null;
         public bool IsTurntable => GetComponentInParent<Turntable>() != null;
 
         public string LogicName =>
             trackType == TrackType.Road
-                ? !generateSigns
-                    ? $"[#] {name}"
-                    : name
+                ? $"{(generateSigns ? "" : "[#] ")}{name}"
                 : $"[Y]_[{stationId}]_[{yardId}-{trackId:D2}-{trackType.LetterId()}]";
 
 #if UNITY_EDITOR
 
-        private void OnEnable()
+        private void Start()
         {
+            // necessary for SetupSnapColliders after updating Mapify
             snapShouldUpdate = true;
         }
 
-        private void OnDisable()
-        {
-            snappedTrackBefore?.UnSnapped();
-            snappedTrackAfter?.UnSnapped();
-        }
-
-        private void OnDestroy()
-        {
-            snappedTrackBefore?.UnSnapped();
-            snappedTrackAfter?.UnSnapped();
-        }
-#endif
-
         private void OnValidate()
+        {
+            SyncSnapRangeToSnapColliders();
+            SyncDrawColorToGizmos();
+        }
+
+        private void SyncDrawColorToGizmos()
         {
             if (!isActiveAndEnabled || IsSwitch || IsTurntable)
                 return;
+
             switch (trackType)
             {
                 case TrackType.Road:
@@ -145,19 +140,86 @@ namespace Mapify.Editor
             }
         }
 
-#if UNITY_EDITOR
+        private void SyncSnapRangeToSnapColliders()
+        {
+            if (frontSnapCollider)
+            {
+                frontSnapCollider.radius = SNAP_RANGE / 2f;
+            }
+            if (rearSnapCollider)
+            {
+                rearSnapCollider.radius = SNAP_RANGE / 2f;
+            }
+        }
+
+        private void SetupSnapColliders()
+        {
+            if (!frontSnapCollider)
+            {
+                frontSnapCollider = CreateSnapCollider(_curve[0].gameObject);
+            }
+            if(!rearSnapCollider)
+            {
+                rearSnapCollider = CreateSnapCollider(_curve.Last().gameObject);
+            }
+        }
+
+        public static SphereCollider CreateSnapCollider(GameObject parent)
+        {
+            var snapCollider = parent.AddComponent<SphereCollider>();
+            snapCollider.radius = SNAP_RANGE/2f;
+            snapCollider.hideFlags = HideFlags.HideInInspector | HideFlags.DontSaveInBuild;
+            return snapCollider;
+        }
+
+        private void OnEnable()
+        {
+            snapShouldUpdate = true;
+        }
+
+        private void OnDisable()
+        {
+            snappedTrackBefore?.UnSnapped();
+            snappedTrackAfter?.UnSnapped();
+        }
+
+        private void OnDestroy()
+        {
+            snappedTrackBefore?.UnSnapped();
+            snappedTrackAfter?.UnSnapped();
+        }
+
         private void OnDrawGizmos()
         {
             if (showLoadingGauge)
+            {
                 DrawLoadingGauge();
-            if (Curve[0].transform.DistToSceneCamera() >= SNAP_UPDATE_RANGE_SQR && Curve.Last().transform.DistToSceneCamera() >= SNAP_UPDATE_RANGE_SQR)
+            }
+            if (IsTurntable ||
+                (Curve[0].transform.SqrDistanceToSceneCamera() > SNAP_UPDATE_RANGE_SQR && Curve.Last().transform.SqrDistanceToSceneCamera() > SNAP_UPDATE_RANGE_SQR))
+            {
                 return;
-            if (!isInSnapped)
-                DrawDisconnectedIcon(Curve[0].position);
-            if (!isOutSnapped)
-                DrawDisconnectedIcon(Curve.Last().position);
+            }
 
-            //first or last point moved?
+            if (!isInSnapped)
+            {
+                DrawDisconnectedIcon(Curve[0].position);
+            }
+            if (!isOutSnapped)
+            {
+                DrawDisconnectedIcon(Curve.Last().position);
+            }
+
+            // switch snapping is done in SwitchBase
+            if (!IsSwitch)
+            {
+                TrySnapTrack();
+            }
+        }
+
+        internal void TrySnapTrack(bool forceUpdate = false)
+        {
+            // first or last point moved?
             if (Curve[0].position != previousPositionFirstPoint ||
                 Curve.Last().position != previousPositionLastPoint)
             {
@@ -167,20 +229,160 @@ namespace Mapify.Editor
                 previousPositionLastPoint = Curve.Last().position;
             }
 
-            if (snapShouldUpdate)
+            if (snapShouldUpdate || forceUpdate)
             {
-                Snap();
+                GameObject[] selectedObjects = Selection.gameObjects;
+                bool shouldMove = !IsSwitch && !IsTurntable && (selectedObjects.Contains(gameObject) || selectedObjects.Contains(Curve[0].gameObject) || selectedObjects.Contains(Curve.Last().gameObject));
+
+                SetupSnapColliders();
+                TrySnapPoint(true, shouldMove);
+                TrySnapPoint(false, shouldMove);
+
                 snapShouldUpdate = false;
             }
         }
 
-        internal void Snap()
+        private readonly Collider[] colliderResults = new Collider[10];
+
+        internal void TrySnapPoint(bool first, bool shouldMove)
         {
-            BezierPoint[] points = FindObjectsOfType<BezierCurve>().SelectMany(curve => new[] { curve[0], curve.Last() }).ToArray();
-            GameObject[] selectedObjects = Selection.gameObjects;
-            bool isSelected = !IsSwitch && !IsTurntable && (selectedObjects.Contains(gameObject) || selectedObjects.Contains(Curve[0].gameObject) || selectedObjects.Contains(Curve.Last().gameObject));
-            TrySnap(points, isSelected, true);
-            TrySnap(points, isSelected, false);
+            var snapCollider = first ? frontSnapCollider : rearSnapCollider;
+            var resultCount = Physics.OverlapSphereNonAlloc(snapCollider.transform.position, snapCollider.radius, colliderResults);
+
+            var closest = new SnapCandidate();
+
+            for (int i = 0; i < resultCount; i++)
+            {
+                var collider = colliderResults[i];
+
+                // tracks
+                {
+                    var point = collider.GetComponent<BezierPoint>();
+                    if (point)
+                    {
+                        if (point._curve != Curve)
+                        {
+                            var distanceSquared = Vector3.SqrMagnitude(point.transform.position - snapCollider.transform.position);
+                            if (distanceSquared < closest.SquaredDistance)
+                            {
+                                closest = new SnapCandidate(point, distanceSquared);
+                            }
+                        }
+
+                        continue;
+                    }
+                }
+
+                // turntables
+                {
+                    var turnTable = collider.GetComponentInParent<Turntable>();
+                    if (turnTable)
+                    {
+                        var track = turnTable.Track;
+                        var radius = Vector3.Distance(track.Curve[0].position, track.Curve.Last().position) / 2;
+                        var directionLocal = track.transform.InverseTransformDirection(snapCollider.transform.position - track.transform.position).normalized;
+
+                        //flatten
+                        var vectorLocal = new Vector3(directionLocal.x, 0, directionLocal.z) * radius;
+                        var closestPositionOnSnapRing = track.transform.TransformPoint(vectorLocal);
+
+                        var distanceSquared = Vector3.SqrMagnitude(closestPositionOnSnapRing - snapCollider.transform.position);
+                        if (distanceSquared <= SNAP_RANGE_SQUARED && distanceSquared < closest.SquaredDistance)
+                        {
+                            closest = new SnapCandidate(turnTable, distanceSquared, closestPositionOnSnapRing);
+                        }
+
+                        continue;
+                    }
+                }
+
+                // TrackSnappables
+                {
+                    var snappable = collider.GetComponentInParent<TrackSnappable>();
+                    if (snappable)
+                    {
+                        var distanceSquared = Vector3.SqrMagnitude(snappable.transform.position - snapCollider.transform.position);
+                        if (distanceSquared < closest.SquaredDistance)
+                        {
+                            closest = new SnapCandidate(snappable, distanceSquared);
+                        }
+                        continue;
+                    }
+                }
+            }
+
+            if (closest.Type == SnapType.None)
+            {
+                UnSnapPoint(first);
+            }
+            else {
+                SnapPoint(first, closest, shouldMove);
+            }
+        }
+
+        private void SnapPoint(bool first, SnapCandidate candidate, bool move)
+        {
+            if (first)
+            {
+                isInSnapped = true;
+            }
+            else
+            {
+                isOutSnapped = true;
+            }
+
+            if (candidate.Type == SnapType.Track)
+            {
+                var otherTrack = candidate.Point.GetTrack();
+                otherTrack.Snapped(candidate.Point);
+
+                // remember what track we snapped to
+                if (first)
+                {
+                    snappedTrackBefore = new SnappedTrack(otherTrack, candidate.Point);
+                }
+                else
+                {
+                    snappedTrackAfter = new SnappedTrack(otherTrack, candidate.Point);
+                }
+            }
+            else
+            {
+                // no need to remember because only tracks have the "Disconnected" indicator
+                if (first)
+                {
+                    snappedTrackBefore = null;
+                }
+                else
+                {
+                    snappedTrackAfter = null;
+                }
+            }
+
+            if (move)
+            {
+                var mySnapPoint = first ? Curve[0] : Curve.Last();
+                mySnapPoint.transform.position = candidate.SnapPosition;
+                //TODO transform the whole track #40
+            }
+        }
+
+        private void UnSnapPoint(bool first)
+        {
+            if (first)
+            {
+                snappedTrackBefore?.UnSnapped();
+                snappedTrackBefore = null;
+
+                isInSnapped = false;
+            }
+            else
+            {
+                snappedTrackAfter?.UnSnapped();
+                snappedTrackAfter = null;
+
+                isOutSnapped = false;
+            }
         }
 
         private static void DrawDisconnectedIcon(Vector3 position)
@@ -189,9 +391,7 @@ namespace Mapify.Editor
             Handles.Label(position, "Disconnected", EditorStyles.whiteBoldLabel);
             const float size = 0.25f;
             Transform cameraTransform = Camera.current.transform;
-            Vector3 cameraForward = cameraTransform.forward;
-            Vector3 cameraUp = cameraTransform.up;
-            Quaternion rotation = Quaternion.LookRotation(cameraForward, cameraUp);
+            Quaternion rotation = Quaternion.LookRotation(cameraTransform.forward, cameraTransform.up);
             Handles.DrawLine(position - rotation * Vector3.one * size, position + rotation * Vector3.one * size);
             Handles.DrawLine(position - rotation * new Vector3(size, -size, 0f), position + rotation * new Vector3(size, -size, 0f));
         }
@@ -221,105 +421,17 @@ namespace Mapify.Editor
             }
         }
 
-        private void TrySnap(IEnumerable<BezierPoint> snapPoints, bool move, bool first)
-        {
-            var mySnapPoint = first ? Curve[0] : Curve.Last();
-            var pos = mySnapPoint.transform.position;
-            var closestPosition = Vector3.zero;
-            var closestDistance = float.MaxValue;
-
-            var colliders = new Collider[1];
-            // Turntables will search for track within 0.05m, so set it a little lower to be safe.
-            if (!IsSwitch && Physics.OverlapSphereNonAlloc(pos, 0.04f, colliders) != 0)
-            {
-                var foundCollider = colliders[0];
-                var track = foundCollider.GetComponent<Track>();
-                if (foundCollider is CapsuleCollider capsule && track != null && track.IsTurntable)
-                {
-                    Vector3 center = capsule.transform.TransformPoint(capsule.center);
-                    closestPosition = pos + (Vector3.Distance(pos, center) - capsule.radius) * -(pos - center).normalized;
-                    closestPosition.y = center.y;
-                    closestDistance = Vector3.Distance(pos, closestPosition);
-
-                    // no need to remember snapped turntables because they don't have the "Disconnected" indicator
-                    if (first)
-                    {
-                        snappedTrackBefore = null;
-                    }
-                    else
-                    {
-                        snappedTrackAfter = null;
-                    }
-                }
-            }
-
-            if (closestDistance >= float.MaxValue)
-            {
-                foreach (BezierPoint otherSnapPoint in snapPoints)
-                {
-                    //don't snap to itself
-                    if (otherSnapPoint.Curve() == mySnapPoint.Curve()) continue;
-
-                    Vector3 otherPosition = otherSnapPoint.transform.position;
-                    float distance = Mathf.Abs(Vector3.Distance(otherPosition, pos));
-
-                    // too far away
-                    if (distance > SNAP_RANGE || distance >= closestDistance) continue;
-
-                    var otherTrack = otherSnapPoint.GetComponentInParent<Track>();
-
-                    // don't snap a switch to another switch
-                    if (IsSwitch && otherTrack.IsSwitch) continue;
-
-                    closestPosition = otherPosition;
-                    closestDistance = distance;
-
-                    otherTrack.Snapped(otherSnapPoint);
-
-                    //remember what track we snapped to
-                    if (first)
-                    {
-                        snappedTrackBefore = new SnappedTrack(otherTrack, otherSnapPoint);
-                    }
-                    else
-                    {
-                        snappedTrackAfter = new SnappedTrack(otherTrack, otherSnapPoint);
-                    }
-                }
-            }
-
-            // No snap target found
-            if (closestDistance >= float.MaxValue)
-            {
-                if (first)
-                {
-                    snappedTrackBefore?.UnSnapped();
-                    snappedTrackBefore = null;
-
-                    isInSnapped = false;
-                }
-                else
-                {
-                    snappedTrackAfter?.UnSnapped();
-                    snappedTrackAfter = null;
-
-                    isOutSnapped = false;
-                }
-                return;
-            }
-
-            if (first) isInSnapped = true;
-            else isOutSnapped = true;
-            if (move) mySnapPoint.transform.position = closestPosition;
-        }
-
-#endif
         internal void Snapped(BezierPoint point)
         {
             if (point == Curve[0])
                 isInSnapped = true;
             if (point == Curve.Last())
                 isOutSnapped = true;
+        }
+
+        internal void InSnapped()
+        {
+            isInSnapped = true;
         }
 
         internal void UnSnapped(BezierPoint point)
@@ -329,6 +441,7 @@ namespace Mapify.Editor
             if (point == Curve.Last())
                 isOutSnapped = false;
         }
+#endif
 
         public static Track Find(string stationId, char yardId, byte trackId, TrackType trackType)
         {

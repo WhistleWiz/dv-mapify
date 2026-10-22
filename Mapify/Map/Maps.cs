@@ -12,6 +12,7 @@ namespace Mapify.Map
 {
     public static class Maps
     {
+        // the base DV map
         public static readonly BasicMapInfo DEFAULT_MAP_INFO = new BasicMapInfo(Names.DEFAULT_MAP_NAME, $"{BuildInfo.BUILD_VERSION_MAJOR}", null);
 
         public static Action OnMapsUpdated;
@@ -46,7 +47,7 @@ namespace Mapify.Map
         {
             if (result)
             {
-                Mapify.LogDebug(() => $"New mod enabled ({modEntry.Info.DisplayName}), checking for maps...");
+                Mapify.LogDebug($"New mod enabled ({modEntry.Info.DisplayName}), checking for maps...");
                 FindMaps(modEntry);
                 return;
             }
@@ -72,6 +73,12 @@ namespace Mapify.Map
                 if (!File.Exists(mapInfoPath))
                     continue;
 
+                if (!modEntry.Enabled)
+                {
+                    Mapify.LogInfo($"Skipping map from '{modEntry.Info.DisplayName}' in '{dir}' because it is disabled.");
+                    continue;
+                }
+
                 BasicMapInfo mapInfo = JsonUtility.FromJson<BasicMapInfo>(File.ReadAllText(mapInfoPath));
                 if (mapInfo.name == Names.DEFAULT_MAP_NAME)
                 {
@@ -86,7 +93,7 @@ namespace Mapify.Map
                     continue;
                 }
 
-                Mapify.LogDebug(() => $"Found map '{mapInfo.name}' from '{modEntry.Info.DisplayName}' in '{dir}'");
+                Mapify.LogDebug($"Found map '{mapInfo.name}' from '{modEntry.Info.DisplayName}' in '{dir}'");
                 availableMaps.Add(mapInfo.name, (mapInfo, modEntry, dir));
                 foundMap = true;
             }
@@ -118,7 +125,7 @@ namespace Mapify.Map
             LoadedMap = mapInfo;
         }
 
-        public static void UnreigsterLoadedMap()
+        public static void UnregisterLoadedMap()
         {
             IsDefaultMap = true;
             LoadedMap = null;

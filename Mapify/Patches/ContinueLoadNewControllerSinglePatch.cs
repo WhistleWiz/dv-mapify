@@ -35,13 +35,14 @@ namespace Mapify.Patches
             Object.Destroy(gameObject.FindChildByName("ButtonIcon - session"));
             gameObject.transform.SetSiblingIndex(gameObject.transform.GetSiblingIndex() - 2);
             Selector selector = gameObject.GetComponentInChildren<Selector>();
-            Maps.OnMapsUpdated += () =>
+
+            Maps.OnMapsUpdated = () =>
             {
-                List<string> mapNames = Maps.AllMapNames.ToList();
-                selector.SetValues(mapNames);
-                selector.SetSelectedIndex(mapNames.FindIndex(name => name == Maps.DEFAULT_MAP_INFO.name));
+                UpdateMapNames(selector);
             };
-            selector.SetValues(Maps.AllMapNames.ToList());
+
+            UpdateMapNames(selector);
+
             selector.SelectionChanged += (clickable, index) => { OnSelectorClicked(__instance, index); };
             Localize localize = selector.GetComponentInChildren<Localize>();
             localize.key = Locale.SESSION__MAP_SELECTOR;
@@ -49,10 +50,17 @@ namespace Mapify.Patches
             return gameObject;
         }
 
+        private static void UpdateMapNames(Selector selector)
+        {
+            var mapNames = Maps.AllMapNames.ToList();
+            selector.SetValues(mapNames);
+            selector.SetSelectedIndex(mapNames.FindIndex(name => name == Maps.DEFAULT_MAP_INFO.name));
+        }
+
         private static void OnSelectorClicked(ContinueLoadNewControllerSingle __instance, int selectedIndex)
         {
-            if (__instance.CurrentThing?.GameData == null)
-                return;
+            if (__instance.CurrentThing?.GameData == null) { return; }
+
             BasicMapInfo basicMapInfo = Maps.FromIndex(selectedIndex);
             __instance.CurrentThing.GameData.SetBasicMapInfo(basicMapInfo);
         }

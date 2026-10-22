@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using CommandTerminal;
+using DV;
 using DV.JObjectExtstensions;
 using DV.PointSet;
 using DV.ThingTypes;
@@ -12,6 +13,7 @@ using Mapify.Editor.Utils;
 using Mapify.Map;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Mapify.Utils
 {
@@ -82,8 +84,8 @@ namespace Mapify.Utils
         public static void PrintHierarchy(this GameObject gameObject, string indent = "")
         {
             Transform t = gameObject.transform;
-            Mapify.Log($"{indent}+-- {t.name}");
-            foreach (Component component in t.GetComponents<Component>()) Mapify.Log($"{indent}|   +-- {component.GetType().Name}");
+            Mapify.LogInfo($"{indent}+-- {t.name}");
+            foreach (Component component in t.GetComponents<Component>()) Mapify.LogInfo($"{indent}|   +-- {component.GetType().Name}");
             foreach (Transform child in t) PrintHierarchy(child.gameObject, $"{indent}|   ");
         }
 
@@ -126,12 +128,34 @@ namespace Mapify.Utils
 
         public static List<CargoGroup> ToVanilla(this IEnumerable<CargoSet> list)
         {
-            return list?.Select(l =>
+            return list?.Select(cargoSet =>
                 new CargoGroup(
-                    l.cargoTypes.ConvertByName<Cargo, CargoType>(),
-                    l.stations.Select(s => s.GetComponent<StationController>()).ToList()
+                    GetCargoTypes(cargoSet),
+                    cargoSet.stations.Select(s => s.GetComponent<StationController>()).ToList()
                 )
             ).ToList();
+        }
+
+        private static List<CargoType> GetCargoTypes(CargoSet cargoSet)
+        {
+            // base game cargo
+            var cargoTypes = cargoSet.cargoTypes.ConvertByName<Cargo, CargoType>();
+
+            // custom cargo mod
+            var cargoTypesById = Globals.G.Types._cargoTypesById;
+            foreach (var customCargoTypeId in cargoSet.customCargoTypes)
+            {
+                if (cargoTypesById.TryGetValue(customCargoTypeId, out var cargoTypeV2))
+                {
+                    cargoTypes.Add(cargoTypeV2.v1);
+                }
+                else
+                {
+                    Mapify.LogError($"{nameof(GetCargoTypes)}: could not find custom cargo type '{customCargoTypeId}' in Globals");
+                }
+            }
+
+            return cargoTypes;
         }
 
         #endregion
@@ -183,11 +207,146 @@ namespace Mapify.Utils
 
         public static IEnumerable<Vector2> GetCurvePositions(this RailTrack track, float resolution)
         {
-            EquiPointSet pointSet = track.GetPointSet();
+            EquiPointSet pointSet = track.GetUnkinkedPointSet();
             EquiPointSet simplified = EquiPointSet.ResampleEquidistant(pointSet, Mathf.Min(resolution, (float)pointSet.span / 3));
 
             foreach (EquiPointSet.Point point in simplified.points)
                 yield return new Vector2((float)point.position.x, (float)point.position.z);
+        }
+
+        // copied from B99.3 RailTrack class
+        public static void TryAlignHandles(this RailTrack track)
+        {
+            if (track.inIsConnected)
+                track.AlignInHandle();
+            if (!track.outIsConnected)
+                return;
+            track.AlignOutHandle();
+        }
+
+        // copied from B99.3 RailTrack class
+        public static void ApplyRailType(this RailTrack track)
+        {
+            if (!(bool) (Object) Globals.G.GameParams)
+            {
+                Debug.LogError("GameParams not found", track);
+                return;
+            }
+
+            var railType = Globals.G.GetRailType(track.age);
+            if (railType == null)
+            {
+                Debug.LogError("Type could not be retrieved from GameParams. Make sure there is at least one track type in it", track);
+            }
+            else
+            {
+                track.railType = railType.railType;
+                track.baseType = railType.baseType;
+            }
+        }
+
+        public static void ConnectInToClosestJunctionOrBranch(this RailTrack track)
+        {
+            if (Mapify.Settings.VerboseLogging)
+            {
+                Mapify.LogDebug($"{nameof(ConnectInToClosestJunctionOrBranch)} '{track.gameObject.GetPath()}'");
+            }
+
+            var pointPosition = track.curve[0].position;
+            var closestJunction = track.FindClosestJunction(pointPosition, Track.SNAP_RANGE);
+            var closestBranch = track.FindClosestBranch(pointPosition, Track.SNAP_RANGE);
+
+            if (closestBranch is null && closestJunction is null)
+            {
+                return;
+            }
+
+            bool junctionIsClosest;
+            if (closestJunction is null)
+            {
+                junctionIsClosest = false;
+            }
+            else if (closestBranch is null)
+            {
+                junctionIsClosest = true;
+            }
+            else if (closestJunction.outBranches.Any(outBranch => outBranch.track == closestBranch.track))
+            {
+                // connect to the switch, not the track in the switch
+                junctionIsClosest = true;
+            }
+            else
+            {
+                junctionIsClosest = Vector3.SqrMagnitude(pointPosition - closestJunction.position) <
+                                    Vector3.SqrMagnitude(pointPosition - closestBranch.GetBezierPoint().position);
+            }
+
+            if (junctionIsClosest)
+            {
+                if (Mapify.Settings.VerboseLogging)
+                {
+                    Mapify.LogDebug($"connecting IN to junction '{closestJunction.gameObject.GetPath()}'");
+                }
+
+                track.ConnectInToClosestJunction();
+            }
+            else
+            {
+                Mapify.LogDebug($"connecting IN to a branch");
+                track.ConnectInToClosestBranch();
+            }
+        }
+
+        public static void ConnectOutToClosestJunctionOrBranch(this RailTrack track)
+        {
+            if (Mapify.Settings.VerboseLogging)
+            {
+                Mapify.LogDebug($"{nameof(ConnectOutToClosestJunctionOrBranch)} '{track.gameObject.GetPath()}'");
+            }
+
+            var pointPosition = track.curve.Last().position;
+            var closestJunction = track.FindClosestJunction(pointPosition, Track.SNAP_RANGE);
+            var closestBranch = track.FindClosestBranch(pointPosition, Track.SNAP_RANGE);
+
+            if (closestBranch is null && closestJunction is null)
+            {
+                return;
+            }
+
+            bool junctionIsClosest;
+            if (closestJunction is null)
+            {
+                junctionIsClosest = false;
+            }
+            else if (closestBranch is null)
+            {
+                junctionIsClosest = true;
+            }
+            else if (closestJunction.outBranches.Any(outBranch => outBranch.track == closestBranch.track))
+            {
+                // connect to the switch, not the track in the switch
+                junctionIsClosest = true;
+            }
+            else
+            {
+                junctionIsClosest = Vector3.SqrMagnitude(pointPosition - closestJunction.position) <
+                                    Vector3.SqrMagnitude(pointPosition - closestBranch.GetBezierPoint().position);
+            }
+
+            if (junctionIsClosest)
+            {
+                if (Mapify.Settings.VerboseLogging)
+                {
+                    Mapify.LogDebug($"connecting OUT to junction '{closestJunction.gameObject.GetPath()}'");
+                }
+
+                track.ConnectOutToClosestJunction();
+            }
+            else
+            {
+                Mapify.LogDebug($"connecting OUT to a branch");
+                track.ConnectOutToClosestBranch();
+            }
         }
 
         public static BasicMapInfo GetBasicMapInfo(this SaveGameManager saveGameManager)
@@ -218,6 +377,55 @@ namespace Mapify.Utils
                 saveGameData.SetJObject(SAVE_KEY_NAME, JObject.FromObject(basicMapInfo));
         }
 
+        public static RailTrack GetRailTrack(this RailTrackRegistry registry, string stationID, string yardID, byte trackNumber)
+        {
+            var query = $"[{stationID}]_[{yardID}-{trackNumber:D2}";
+            return registry.AllTracks.FirstOrDefault(track => track.name.Contains(query));
+        }
+
+        public static Junction.Branch FindClosestBranch(this Junction junction, Vector3 fromPoint, List<RailTrack> tracksCache, float maxRange = 5f)
+        {
+            var closestDistance = float.PositiveInfinity;
+
+            RailTrack branchTrack = null;
+            var first = false;
+
+            foreach (var aTrack in tracksCache)
+            {
+                // skip the tracks in the junction
+                if(junction.outBranches.Any(branch => branch.track == aTrack)) continue;
+
+                if (!aTrack.curve || aTrack.curve.pointCount < 2) continue;
+
+                var firstPoint = aTrack.curve[0];
+
+                var distanceToFirst = Vector3.Distance(fromPoint, firstPoint.position);
+                if (distanceToFirst < maxRange && distanceToFirst < closestDistance)
+                {
+                    closestDistance = distanceToFirst;
+                    branchTrack = aTrack;
+                    first = true;
+                }
+
+                var lastPoint = aTrack.curve.Last();
+                var distanceToLast = Vector3.Distance(fromPoint, lastPoint.position);
+                if (distanceToLast < maxRange && distanceToLast < closestDistance)
+                {
+                    closestDistance = distanceToLast;
+                    branchTrack = aTrack;
+                    first = false;
+                }
+            }
+
+            if (branchTrack == null)
+            {
+                Mapify.LogError($"Failed to find closest branch for {junction.name}");
+                return null;
+            }
+
+            return new Junction.Branch(branchTrack, first);
+        }
+
         #endregion
 
         #region Mapify
@@ -230,6 +438,16 @@ namespace Mapify.Utils
         public static GameObject Replace(this VanillaObject vanillaObject, bool active = true, bool originShift = true, Type[] preserveTypes = null)
         {
             return vanillaObject.gameObject.Replace(AssetCopier.Instantiate(vanillaObject.asset, active, originShift), preserveTypes, vanillaObject.keepChildren, vanillaObject.rotationOffset);
+        }
+
+        public static string GetLocalizedStationName(this Station station)
+        {
+            if(Locale.TryGetMapSpecificTranslation(Locale.STATION_PREFIX+station.stationID, out var localizedName))
+            {
+                return localizedName;
+            }
+
+            return station.stationName;
         }
 
         #endregion

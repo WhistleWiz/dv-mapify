@@ -9,7 +9,7 @@ namespace Mapify.Editor.StateUpdaters
         protected override void Update(Scenes scenes)
         {
             MapInfo mapInfo = EditorAssets.FindAsset<MapInfo>();
-            SceneSplitData splitData = SceneSplitter.SplitScene(scenes.streamingScene, Scenes.STREAMING_DIR, mapInfo);
+            SceneSplitData splitData = SceneSplitter.SplitScene(scenes.streamingScene, mapInfo);
             mapInfo.sceneSplitData = JsonUtility.ToJson(splitData);
         }
 

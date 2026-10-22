@@ -64,7 +64,7 @@ namespace Mapify.Editor.Validators
                     var machine = station.warehouseMachines[i];
                     if (machine == null)
                     {
-                        //machine set to null / None would cause a NullReferenceException below
+                        // machine set to null / None would cause a NullReferenceException below
                         skipMachineChecks = true;
                         yield return Result.Error($"Station has warehouse machine set to None", station);
                     }
@@ -72,14 +72,29 @@ namespace Mapify.Editor.Validators
 
                 if (!skipMachineChecks)
                 {
-                    Cargo[] warehouseCargoTypes = station.warehouseMachines.SelectMany(m => m.supportedCargoTypes).Distinct().ToArray();
-                    Cargo[] stationCargoTypes = station.inputCargoGroups.Concat(station.outputCargoGroups).SelectMany(g => g.cargoTypes).Distinct().ToArray();
+                    // base game cargo
+                    {
+                        Cargo[] warehouseCargoTypes = station.warehouseMachines.SelectMany(m => m.supportedCargoTypes).Distinct().ToArray();
+                        Cargo[] stationCargoTypes = station.inputCargoGroups.Concat(station.outputCargoGroups).SelectMany(g => g.cargoTypes).Distinct().ToArray();
 
-                    foreach (Cargo unusedCargo in warehouseCargoTypes.Except(stationCargoTypes))
-                        yield return Result.Error($"Station has warehouse machine with {unusedCargo} but the station doesn't accept or output it!", station);
+                        foreach (Cargo unusedCargo in warehouseCargoTypes.Except(stationCargoTypes))
+                            yield return Result.Error($"Station has warehouse machine with {unusedCargo} but the station doesn't accept or output it!", station);
 
-                    foreach (Cargo cargo in stationCargoTypes.Except(warehouseCargoTypes))
-                        yield return Result.Error($"No WarehouseMachine found that accepts {cargo}!", station);
+                        foreach (Cargo cargo in stationCargoTypes.Except(warehouseCargoTypes))
+                            yield return Result.Error($"No WarehouseMachine found that accepts {cargo}!", station);
+                    }
+
+                    // custom cargo mod cargo
+                    {
+                        var warehouseCustomCargoTypes = station.warehouseMachines.SelectMany(m => m.supportedCustomCargoTypes).Distinct().ToArray();
+                        var stationCustomCargoTypes = station.inputCargoGroups.Concat(station.outputCargoGroups).SelectMany(g => g.customCargoTypes).Distinct().ToArray();
+
+                        foreach (var unusedCargo in warehouseCustomCargoTypes.Except(stationCustomCargoTypes))
+                            yield return Result.Error($"Station has warehouse machine with '{unusedCargo}' but the station doesn't accept or output it!", station);
+
+                        foreach (var cargo in stationCustomCargoTypes.Except(warehouseCustomCargoTypes))
+                            yield return Result.Error($"No WarehouseMachine found that accepts '{cargo}'!", station);
+                    }
                 }
 
                 #endregion

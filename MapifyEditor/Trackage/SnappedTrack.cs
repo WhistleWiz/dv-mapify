@@ -1,20 +1,24 @@
 ﻿namespace Mapify.Editor
 {
-    public class SnappedTrack
+#if UNITY_EDITOR
+
+    internal class SnappedTrack
     {
-        private Track track;
-        private BezierPoint point;
+        public Track Track { get; private set; }
+        public BezierPoint Point { get; private set; }
 
         public SnappedTrack(Track aTrack, BezierPoint aPoint)
         {
-            track = aTrack;
-            point = aPoint;
+            Track = aTrack;
+            Point = aPoint;
         }
 
         public void UnSnapped()
         {
-            if (track == null){ return; }
-            track.UnSnapped(point);
+            if (!Track){ return; }
+            Track.UnSnapped(Point);
         }
     }
+
+#endif
 }

@@ -272,7 +272,7 @@ namespace Mapify.Editor.Tools
             for (int i = includeFirst ? 0 : 1; i < results.Length; i++)
             {
                 tan = BezierCurve.Tangent(p0, p1, p2, p3, i / (float)samples);
-                //Handles.Label(results[i] + Vector3.up * HandleUtility.GetHandleSize(results[i]), new GUIContent(
+                // Handles.Label(results[i] + Vector3.up * HandleUtility.GetHandleSize(results[i]), new GUIContent(
                 //    $"{MathHelper.GetGrade(results[i], results[i] + tan) * 100.0f:F2}%"));
 
                 label = new GUIContent(new GUIContent($"{MathHelper.GetGrade(Vector3.zero, tan) * 100.0f:F2}%"));

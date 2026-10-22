@@ -73,6 +73,7 @@
         SemiTrailers = 266,
         CraneParts = 267,
         Trams = 268,
+        ForestryTrailers = 269,
         Alcohol = 280,
         Acetylene = 281,
         CryoOxygen = 282,

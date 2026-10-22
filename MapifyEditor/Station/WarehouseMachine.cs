@@ -11,8 +11,12 @@ namespace Mapify.Editor
         public char loadingTrackYardId;
         [Tooltip("The Track ID of the track this machine is assigned to")]
         public byte loadingTrackId;
-        [Tooltip("What all cargo types this machine supports")]
+
+        [Tooltip("What cargo types this machine supports")]
         public List<Cargo> supportedCargoTypes;
+
+        [Tooltip("What custom cargo types this machine supports (Custom Cargo Mod)")]
+        public List<string> supportedCustomCargoTypes;
 
         public Track LoadingTrack => Track.Find(loadingTrackStationId, loadingTrackYardId, loadingTrackId, TrackType.Loading);
     }

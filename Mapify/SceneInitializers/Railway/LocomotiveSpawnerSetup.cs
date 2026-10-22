@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using DV;
+using DV.ThingTypes;
 using Mapify.Editor;
 using UnityEngine;
 
@@ -21,12 +22,24 @@ namespace Mapify.SceneInitializers.Railway
             locoSpawner.locoSpawnTrackName = spawner.Track.name;
             locoSpawner.locoTypeGroupsToSpawn = spawner.condensedLocomotiveTypes
                 .Select(rollingStockTypes =>
-                    new ListTrainCarTypeWrapper(rollingStockTypes.Split(',').Select(rollingStockType =>
-                            Globals.G.Types.Liveries.Find(l => l.id == rollingStockType)
-                        ).ToList()
+                    new ListTrainCarTypeWrapper(
+                        rollingStockTypes.Split(',')
+                        .Select(FindLiveryForTrainType)
+                        .ToList()
                     )
                 ).ToList();
             spawner.gameObject.SetActive(wasActive);
+        }
+
+        private static TrainCarLivery FindLiveryForTrainType(string trainTypeID)
+        {
+            var livery = Globals.G.Types.Liveries.Find(livery => livery.parentType.id == trainTypeID);
+            if (livery == default)
+            {
+                Mapify.LogError($"{nameof(LocomotiveSpawnerSetup)}.{nameof(FindLiveryForTrainType)}: could not find livery for train type ID {trainTypeID}");
+            }
+
+            return livery;
         }
     }
 }

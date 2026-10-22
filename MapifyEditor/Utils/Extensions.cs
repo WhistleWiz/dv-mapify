@@ -15,14 +15,29 @@ namespace Mapify.Editor.Utils
     {
         #region GameObjects & Components
 
-        public static float DistToSceneCamera(this Transform t)
-        {
 #if UNITY_EDITOR
-            return (t.position - Camera.current.transform.position).sqrMagnitude;
-#else
-            throw new InvalidOperationException($"{nameof(Extensions)}.{nameof(DistToSceneCamera)} can only be used in the editor");
-#endif
+
+        public static string GetPath(this Transform obj)
+        {
+            string path = obj.name;
+            while (obj.parent != null)
+            {
+                obj = obj.parent;
+                path = $"{obj.name}/{path}";
+            }
+            return path;
         }
+
+        public static float SqrDistanceToSceneCamera(this Transform t)
+        {
+            if (!Camera.current)
+            {
+                return 0;
+            }
+
+            return (t.position - Camera.current.transform.position).sqrMagnitude;
+        }
+#endif
 
         public static T GetComponentInSelfOrParent<T>(this Component component)
         {
@@ -202,14 +217,14 @@ namespace Mapify.Editor.Utils
             return curve;
         }
 
-        public static BezierPoint[] GetFirstAndLastPoints(this BezierCurve curve)
+        public static Track GetTrack(this BezierPoint point)
         {
-            return new[] { curve[0], curve.Last() };
+            return point.GetComponentInParent<Track>();
         }
 
         public static Vector3[] AsControlPoints(this BezierCurve curve, int from)
         {
-            return new Vector3[] { curve[from].position,
+            return new[] { curve[from].position,
                 curve[from].globalHandle2,
                 curve[from + 1].globalHandle1,
                 curve[from + 1].position};
@@ -242,12 +257,6 @@ namespace Mapify.Editor.Utils
                 .Where(group => group.Key != null)
                 .ToDictionary(group => group.Key, group => group.ToList());
         }
-
-        // Switches.
-        public static BezierPoint GetJointPoint(this Switch s) => s.ThroughTrack.Curve[0];
-        public static BezierPoint GetThroughPoint(this Switch s) => s.ThroughTrack.Curve[1];
-        public static BezierPoint GetDivergingPoint(this Switch s) => s.DivergingTrack.Curve[1];
-        public static BezierPoint GetDivergeJoinPoint(this Switch s) => s.DivergingTrack.Curve[0];
 
         // Track.
         /// <summary>

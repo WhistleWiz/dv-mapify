@@ -1,10 +1,10 @@
 {
   "Id": "Mapify",
-  "Version": "0.4.1",
-  "DisplayName": "Mapify",
-  "Author": "Insprill",
+  "Version": "2026.09.08",
+  "DisplayName": "Mapify Continued",
+  "Author": "Insprill & contributors",
   "EntryMethod": "Mapify.Mapify.Load",
   "ManagerVersion": "0.27.13",
-  "HomePage": "https://www.nexusmods.com/derailvalley/mods/593",
-  "Repository": "https://raw.githubusercontent.com/Insprill/dv-mapify/master/repository.json"
+  "HomePage": "https://github.com/t0stiman/dv-mapify",
+  "Repository": "https://raw.githubusercontent.com/t0stiman/dv-mapify/master/repository.json"
 }

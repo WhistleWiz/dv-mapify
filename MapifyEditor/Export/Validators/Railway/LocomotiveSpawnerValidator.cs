@@ -33,7 +33,7 @@ namespace MapifyEditor.Export.Validators
 
             #region Vanilla Spawners
 
-            foreach (VanillaLocomotiveSpawner spawner in spawners.OfType<VanillaLocomotiveSpawner>())
+            foreach (var spawner in spawners.OfType<VanillaLocomotiveSpawner>())
                 if (spawner.locomotiveGroups.Count == 0)
                     yield return Result.Error("Locomotive spawners must have at least one group to spawn!", spawner);
                 else if (spawner.locomotiveGroups.Exists(group => group.rollingStock.Count == 0))
@@ -43,11 +43,21 @@ namespace MapifyEditor.Export.Validators
 
             #region Custom Spawners
 
-            foreach (CustomLocomotiveSpawner spawner in spawners.OfType<CustomLocomotiveSpawner>())
+            foreach (var spawner in spawners.OfType<CustomLocomotiveSpawner>())
+            {
                 if (spawner.locomotiveGroups.Count == 0)
+                {
                     yield return Result.Error("Locomotive spawners must have at least one group to spawn!", spawner);
+                }
                 else if (spawner.locomotiveGroups.Exists(group => group.rollingStock.Count == 0))
+                {
                     yield return Result.Error("Locomotive spawner groups must have at least one type to spawn!", spawner);
+                }
+                else if (spawner.locomotiveGroups.SelectMany(group => group.rollingStock).Any(locomotiveID => locomotiveID == ""))
+                {
+                    yield return Result.Error("Locomotive ID cannot be empty", spawner);
+                }
+            }
 
             #endregion
         }

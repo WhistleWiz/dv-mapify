@@ -44,8 +44,9 @@ namespace Mapify.Editor
 
         public void OnGUI()
         {
-            GUIStyle style = new GUIStyle(GUI.skin.label) {
-                richText = true
+            var style = new GUIStyle(GUI.skin.label) {
+                richText = true,
+                wordWrap = true
             };
 
             scrollPosition = GUILayout.BeginScrollView(scrollPosition);

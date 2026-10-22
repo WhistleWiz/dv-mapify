@@ -26,7 +26,7 @@ namespace Mapify.SceneInitializers.GameContent
                 manualServiceIndicatorTransform.SetPositionAndRotation(msi.position, msi.rotation);
                 Object.Destroy(msi.gameObject);
 
-                //todo: customizable price-per-unit
+                // todo: customizable price-per-unit
                 List<LocoResourceModule> resourceModules = new List<LocoResourceModule>(serviceStation.resources.Length);
                 for (int i = 0; i < serviceStation.resources.Length; i++)
                 {
@@ -57,9 +57,10 @@ namespace Mapify.SceneInitializers.GameContent
                     }
                     else if (asset == VanillaAsset.CashRegister)
                     {
-                        GameObject cashRegisterObj = vanillaObject.Replace();
+                        GameObject cashRegisterObj = vanillaObject.Replace(active: false);
                         CashRegisterWithModules cashRegister = cashRegisterObj.GetComponentInChildren<CashRegisterWithModules>();
                         cashRegister.registerModules = resourceModules.Cast<CashRegisterModule>().ToArray();
+                        cashRegisterObj.SetActive(true);
                     }
                 }
 

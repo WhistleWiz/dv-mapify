@@ -1,0 +1,6 @@
+[book]
+title = "Mapify Continued"
+authors = ["Insprill", "Tostiman"]
+
+[output.html]
+git-repository-url = "https://github.com/t0stiman/dv-mapify"
