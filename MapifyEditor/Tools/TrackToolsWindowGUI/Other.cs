@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Mapify.Editor.Utils;
 using UnityEditor;
 using UnityEngine;

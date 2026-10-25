@@ -1,5 +1,4 @@
-﻿using System;
-using DV.Shops;
+﻿using DV.Shops;
 using DV.WeatherSystem;
 using Mapify.Editor;
 using Mapify.SceneInitializers.Vanilla.GameContent;
