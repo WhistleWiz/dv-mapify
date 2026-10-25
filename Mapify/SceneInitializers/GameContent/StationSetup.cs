@@ -1,18 +1,12 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+﻿using System.Linq;
 using DV;
 using DV.Teleporters;
 using DV.ThingTypes;
 using DV.Utils;
-using HarmonyLib;
 using Mapify.Editor;
-using Mapify.Map;
 using Mapify.SceneInitializers.Railway;
 using Mapify.Utils;
 using UnityEngine;
-using Track = DV.Logic.Job.Track;
-using WarehouseMachine = DV.Logic.Job.WarehouseMachine;
 
 namespace Mapify.SceneInitializers.GameContent
 {

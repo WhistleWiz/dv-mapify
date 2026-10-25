@@ -1,7 +1,6 @@
 #region UsingStatements
 
 using System;
-using System.Collections;
 using UnityEngine;
 
 #endregion
