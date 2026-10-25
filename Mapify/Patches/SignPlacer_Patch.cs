@@ -1,4 +1,4 @@
-﻿using DV.Signs;
+using DV.Signs;
 using HarmonyLib;
 using Mapify.Map;
 
